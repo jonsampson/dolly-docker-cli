@@ -1,13 +1,26 @@
-FROM python:3.10-slim
+FROM python:3.9-slim-buster
 
-WORKDIR /dolly-2
+# Install dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install git -y
-RUN pip install "git+https://github.com/huggingface/transformers"
-RUN pip install accelerate>=0.12.0 
+# Clone the transformers repository
+RUN git clone https://github.com/huggingface/transformers.git /opt/transformers
 
-COPY runner.py .
+WORKDIR /opt/transformers
 
-RUN python runner.py "Say hello world"
+# Install the transformers library
+RUN pip install -e .
 
-CMD [ "python", "runner.py" ]
+# Install other required packages
+RUN pip install torch==1.10.0 \
+                numpy==1.21.4 \
+                sentencepiece==0.1.96 \
+                accelerate>=0.12.0 
+
+# Copy the text generation script into the container
+COPY generate_text.py /opt/transformers
+
+# Define an entrypoint script that takes the name of the input file as an argument
+ENTRYPOINT ["python", "/opt/transformers/generate_text.py"]
